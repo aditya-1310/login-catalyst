@@ -7,12 +7,14 @@ import { SignupDto } from './dto/signup.dto';
 import { LoginDto } from './dto/login.dto';
 import { JwtService } from '@nestjs/jwt';
 import { HttpException, HttpStatus } from '@nestjs/common';
+import { OtpService } from 'src/otp/otp.service';
 
 @Injectable()
 export class AuthService {
   constructor(
     @InjectModel('User') private readonly userModel: Model<User>,
     private jwtService: JwtService,
+    private readonly otpService: OtpService,
   ) {}
 
   async signup(signUpDto: SignupDto): Promise<{ token: string }> {
@@ -46,6 +48,8 @@ export class AuthService {
     if (!isPasswordValid) {
       throw new HttpException('Incorrect password.', HttpStatus.UNAUTHORIZED);
     }
+
+    await this.otpService.sendOTPFunc(user._id, user.email);
   
     // Generate JWT token
     const token = this.jwtService.sign({ userId: user._id, email: user.email });

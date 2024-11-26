@@ -8,8 +8,8 @@ import { Passport } from 'passport';
 import { PassportModule } from '@nestjs/passport';
 import { JwtModule, JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
-import { User } from './schemas/user.schema';
 import { ApiModule } from '../api/api.module';
+import { OtpModule } from 'src/otp/otp.module';
 
 @Module({
   imports: [
@@ -25,7 +25,7 @@ import { ApiModule } from '../api/api.module';
         };
       },
     }),
-    MongooseModule.forFeature([{name: 'User', schema: UserSchema}]), ApiModule
+    MongooseModule.forFeature([{name: 'User', schema: UserSchema}]), ApiModule, OtpModule
   ],
   controllers: [AuthController],
   providers: [AuthService]
