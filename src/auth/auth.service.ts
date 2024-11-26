@@ -1,63 +1,57 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import * as bcrypt from 'bcrypt';
+import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { use } from 'passport';
-import { User } from './schemas/user.schema';
 import { Model } from 'mongoose';
-import * as bcrypt from 'bcryptjs'
-import { JwtService } from '@nestjs/jwt';
+import { User } from './schemas/user.schema';
 import { SignupDto } from './dto/signup.dto';
 import { LoginDto } from './dto/login.dto';
-import { ApiService } from 'src/api/api.service';
+import { JwtService } from '@nestjs/jwt';
+import { HttpException, HttpStatus } from '@nestjs/common';
+
 @Injectable()
 export class AuthService {
-    constructor(
-        @InjectModel(User.name)
-         private userModel:Model<User>,
-         private jwtService :JwtService,
-         private readonly apiService: ApiService
-        ) {}
+  constructor(
+    @InjectModel('User') private readonly userModel: Model<User>,
+    private jwtService: JwtService,
+  ) {}
 
-        async signup(signUpDto:SignupDto): Promise<{token:string}> {
-         const {name,email,password,phone_number,gender}=signUpDto
-         const hashedPassword=await bcrypt.hash(password,10)
-         const user=await this.userModel.create({
-            name,
-            email,
-            password:hashedPassword,
-            phone_number,
-            gender
-         })
+  async signup(signUpDto: SignupDto): Promise<{ token: string }> {
+    const { password, ...rest } = signUpDto;
 
-         // genrate a link and then 
-         // random string; -> jwt
-         // schema => otp/verify
-         // otp, key, userid timestamp, exp 10mins
-         // jwt 
-         
-        //  const result = await this.apiService.sendOtp(email, link);
+    // Hash the password
+    const hashedPassword = await bcrypt.hash(password, 10);
 
-         const token = this.jwtService.sign({ id:user._id})
-         return{ token }
-        }
-        async login(loginDto:LoginDto):Promise<{token:string}>{
-            const {email,password}=loginDto
-            const user = await this.userModel.findOne({email})
-            if(!user){
-                throw new UnauthorizedException('Invalid credentials')
+    // Create a new user
+    const user = await this.userModel.create({ ...rest, password: hashedPassword });
 
-            }
-            const ispasswordMatched=await bcrypt.compare(password,user.password)
-            if(!ispasswordMatched){
-                throw new UnauthorizedException('Invalid credentials')
-            }
-            const token = this.jwtService.sign({ id:user._id})
-            return{ token }
-        }
+    // Generate a JWT token
+    const token = this.jwtService.sign({ userId: user._id, email: user.email });
 
+    return { token };
+  }
 
-        // login with otp.
-        //  const result = await this.apiService.sendOtp(email, otp);
+  
 
+  async login(loginDto: LoginDto): Promise<{ token: string }> {
+    const { email, password } = loginDto;
+  
+    // Find the user by email
+    const user = await this.userModel.findOne({ email });
+    if (!user) {
+      throw new HttpException('User with the provided email does not exist.', HttpStatus.NOT_FOUND);
+    }
+  
+    // Compare passwords
+    const isPasswordValid = await bcrypt.compare(password, user.password);
+    if (!isPasswordValid) {
+      throw new HttpException('Incorrect password.', HttpStatus.UNAUTHORIZED);
+    }
+  
+    // Generate JWT token
+    const token = this.jwtService.sign({ userId: user._id, email: user.email });
+  
+    return { token };
+  }
+  
+  
 }
-
-
