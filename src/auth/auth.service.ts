@@ -8,6 +8,7 @@ import { LoginDto } from './dto/login.dto';
 import { JwtService } from '@nestjs/jwt';
 import { HttpException, HttpStatus } from '@nestjs/common';
 import { OtpService } from 'src/otp/otp.service';
+import { VerifyOtpDto } from './dto/verify-otp.dto';
 
 @Injectable()
 export class AuthService {
@@ -32,8 +33,6 @@ export class AuthService {
     return { token };
   }
 
-  
-
   async login(loginDto: LoginDto): Promise<{ token: string }> {
     const { email, password } = loginDto;
   
@@ -49,13 +48,28 @@ export class AuthService {
       throw new HttpException('Incorrect password.', HttpStatus.UNAUTHORIZED);
     }
 
+    // Send OTP
     await this.otpService.sendOTPFunc(user._id, user.email);
-  
-    // Generate JWT token
+    
+    // Return temporary token or null until OTP is verified
+    return { token: '' };  // or throw an exception indicating OTP verification needed
+  }
+
+  async verifyOtp(verifyOtpDto: VerifyOtpDto): Promise<{ token: string }> {
+    const { email, otp } = verifyOtpDto;
+    
+    const user = await this.userModel.findOne({ email });
+    if (!user) {
+      throw new HttpException('User not found', HttpStatus.NOT_FOUND);
+    }
+
+    const isValid = await this.otpService.verifyOTP(user._id, otp);
+    if (!isValid) {
+      throw new HttpException('Invalid or expired OTP', HttpStatus.BAD_REQUEST);
+    }
+
+    // Generate JWT token after successful OTP verification
     const token = this.jwtService.sign({ userId: user._id, email: user.email });
-  
     return { token };
   }
-  
-  
 }

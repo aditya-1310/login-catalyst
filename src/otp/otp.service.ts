@@ -8,40 +8,74 @@ import { ApiService } from 'src/api/api.service';
 @Injectable()
 export class OtpService {
   constructor(
-    @InjectModel('Otp') private readonly otpModel: Model<OtpDocument>,
-    private readonly apiService: ApiService
-
+    @InjectModel(Otp.name) private otpModel: Model<OtpDocument>,
+    private apiService: ApiService,
   ) {}
 
   generateOtp(): string {
-    return randomInt(100000, 999999).toString(); // 6-digit OTP
-  }
-  async saveOtp(userId: string, otp: string): Promise<void> {
-    const otpEntry = new this.otpModel({ userId, otp, createdAt: new Date() });
-    await otpEntry.save();
+    return Math.floor(100000 + Math.random() * 900000).toString();
   }
 
-  async sendOTPFunc(userId: any, email: string): Promise<void> {
-    const otp = this.generateOtp();
-    const otpEntry = new this.otpModel({ userId, otp, createdAt: new Date() });
-    this.apiService.sendOtp(email, otp);
-    await otpEntry.save();
-  }
+  async sendOTPFunc(email: string): Promise<void> {
+    try {
+      // Delete any existing OTP for this email
+      await this.otpModel.deleteMany({ email });
 
-  async validateOtp(userId: string, otp: string): Promise<boolean> {
-    const otpEntry = await this.otpModel.findOne({ userId, otp });
-    if (!otpEntry) {
-      return false; // OTP not found
+      const otp = this.generateOtp();
+      console.log('Generated OTP:', { email, otp });
+
+      const otpEntry = new this.otpModel({
+        email,
+        otp,
+        createdAt: new Date()
+      });
+
+      await otpEntry.save();
+      console.log('OTP saved to database:', otpEntry);
+
+      await this.apiService.sendOtp(email, otp);
+      console.log('OTP sent to email successfully');
+    } catch (error) {
+      console.error('Error in sendOTPFunc:', error);
+      throw error;
     }
+  }
 
-    // Check if OTP is expired (10 minutes)
-    const isExpired = (new Date().getTime() - otpEntry.createdAt.getTime()) > 10 * 60 * 1000;
-    if (isExpired) {
-      await otpEntry.deleteOne(); // Delete expired OTP
+  async validateOtp(email: string, otp: string): Promise<boolean> {
+    try {
+      console.log('Attempting to validate OTP:', { email, otp });
+
+      const otpEntry = await this.otpModel.findOne({ 
+        email,
+        otp
+      }).exec();
+
+      console.log('Found OTP entry:', otpEntry);
+
+      if (!otpEntry) {
+        console.log('No matching OTP found in database');
+        return false;
+      }
+
+      const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000);
+      console.log('OTP creation time:', otpEntry.createdAt);
+      console.log('Current time:', new Date());
+      console.log('Expiry threshold:', tenMinutesAgo);
+
+      if (otpEntry.createdAt < tenMinutesAgo) {
+        console.log('OTP has expired');
+        await this.otpModel.deleteOne({ _id: otpEntry._id });
+        return false;
+      }
+
+      // Valid OTP - delete it
+      await this.otpModel.deleteOne({ _id: otpEntry._id });
+      console.log('OTP validated successfully and deleted');
+      return true;
+
+    } catch (error) {
+      console.error('Error in validateOtp:', error);
       return false;
     }
-
-    await otpEntry.deleteOne(); // Delete OTP after successful validation
-    return true; // OTP is valid
   }
 }

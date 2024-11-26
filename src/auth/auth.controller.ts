@@ -1,7 +1,8 @@
-import { Body, Controller, Post, HttpException, HttpStatus } from '@nestjs/common';
+import { Body, Controller, Post, HttpException, HttpStatus, ValidationPipe } from '@nestjs/common';
 import { SignupDto } from './dto/signup.dto';
 import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
+import { VerifyOtpDto } from './dto/verify-otp.dto';
 
 @Controller('auth')
 export class AuthController {
@@ -22,6 +23,26 @@ export class AuthController {
       return await this.authService.login(loginDto);
     } catch (error) {
       throw new HttpException(error.message || 'Invalid credentials', HttpStatus.UNAUTHORIZED);
+    }
+  }
+
+  @Post('verify')
+  async verifyOtp(@Body(ValidationPipe) verifyOtpDto: VerifyOtpDto): Promise<{ token: string }> {
+    try {
+      const { email, otp } = verifyOtpDto;
+      const isValid = await this.authService.verifyOtp(verifyOtpDto);
+      
+      if (!isValid) {
+        throw new HttpException('Invalid or expired OTP', HttpStatus.BAD_REQUEST);
+      }
+      
+      const token = await this.authService.generateTokenAfterOtp(email);
+      return { token };
+    } catch (error) {
+      throw new HttpException(
+        error.message || 'OTP verification failed',
+        HttpStatus.BAD_REQUEST
+      );
     }
   }
 }

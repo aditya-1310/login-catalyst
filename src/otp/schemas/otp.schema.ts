@@ -1,19 +1,17 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { HydratedDocument } from 'mongoose';
+import { Document } from 'mongoose';
 
-export type OtpDocument = HydratedDocument<Otp>;
-
-@Schema()
+@Schema({ timestamps: true })
 export class Otp {
   @Prop({ required: true })
-  userId: string;
+  email: string;
 
   @Prop({ required: true })
   otp: string;
 
-  // This field will trigger the TTL index
-  @Prop({ required: true, default: () => new Date(), expires: 600 }) // 600 seconds = 10 minutes
+  @Prop({ default: Date.now })
   createdAt: Date;
 }
 
+export type OtpDocument = Otp & Document;
 export const OtpSchema = SchemaFactory.createForClass(Otp);
