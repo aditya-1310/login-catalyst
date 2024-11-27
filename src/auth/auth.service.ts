@@ -49,7 +49,7 @@ export class AuthService {
     }
 
     // Send OTP
-    await this.otpService.sendOTPFunc(user._id, user.email);
+    await this.otpService.sendOTPFunc(user.email);
     
     // Return temporary token or null until OTP is verified
     return { token: '' };  // or throw an exception indicating OTP verification needed
@@ -63,7 +63,8 @@ export class AuthService {
       throw new HttpException('User not found', HttpStatus.NOT_FOUND);
     }
 
-    const isValid = await this.otpService.verifyOTP(user._id, otp);
+    const isValid = await this.otpService.validateOtp(email, otp);
+    console.log('isValid', isValid)
     if (!isValid) {
       throw new HttpException('Invalid or expired OTP', HttpStatus.BAD_REQUEST);
     }

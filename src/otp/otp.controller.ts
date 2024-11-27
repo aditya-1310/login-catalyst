@@ -16,4 +16,5 @@ export class OtpController {
   async sendOtp(@Body() otpDto: OtpDto) {
     return this.otpService.sendOTPFunc(otpDto.email);
   }
+  
 }

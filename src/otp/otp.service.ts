@@ -50,7 +50,7 @@ export class OtpService {
         otp
       }).exec();
 
-      console.log('Found OTP entry:', otpEntry);
+      // console.log('Found OTP entry:', otpEntry);
 
       if (!otpEntry) {
         console.log('No matching OTP found in database');

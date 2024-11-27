@@ -28,16 +28,9 @@ export class AuthController {
 
   @Post('verify')
   async verifyOtp(@Body(ValidationPipe) verifyOtpDto: VerifyOtpDto): Promise<{ token: string }> {
-    try {
-      const { email, otp } = verifyOtpDto;
-      const isValid = await this.authService.verifyOtp(verifyOtpDto);
-      
-      if (!isValid) {
-        throw new HttpException('Invalid or expired OTP', HttpStatus.BAD_REQUEST);
-      }
-      
-      const token = await this.authService.generateTokenAfterOtp(email);
-      return { token };
+    try {      
+      const token = await this.authService.verifyOtp(verifyOtpDto);
+      return token
     } catch (error) {
       throw new HttpException(
         error.message || 'OTP verification failed',
